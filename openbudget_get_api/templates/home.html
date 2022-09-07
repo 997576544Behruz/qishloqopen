@@ -1,0 +1,187 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yo`llar uchun ovoz berish.</title>
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+</head>
+<body>
+    <br>
+    <div class="container-fluid">
+        <div class="row">
+          <div class="col-md-4 col-sm-3 col-xs-1">
+
+          </div>
+          <div class="col-md-4 col-sm-6 col-xs-10">
+            <h2 class="text-center">Mehnatkash yo'lini asfalt qilishga ovoz berish</h2>
+            <div class="card">
+                <div class="card-body">
+                    <!-- <form> -->
+                        <div class="mb-3">
+                          <label for="phone" class="form-label">Telefon raqami</label>
+                          <div class="input-group mb-3">
+                            <span class="input-group-text" id="addon">+998</span>
+                            <input type="text" id="phone" class="form-control" placeholder="Raqam" autofocus aria-describedby="addon">
+                          </div>
+
+                        </div>
+                        <div class="mb-3 d-none" id="codeDiv">
+                          <label for="code" class="form-label">SMS tarzda kod yuborildi - (<span class="text-danger" id="time"></span>)</label>
+                          <input type="text" placeholder="Kodni kiriting" class="form-control" id="code">
+                        </div>
+                        <div id="message">
+
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" id="sendBtn" class="btn btn-warning">Ovoz berish</button>
+
+                    </div>
+                    <div id="messageSuccess"></div>
+                      <!-- </form> -->
+                </div>
+              </div>
+          </div>
+          <div class="col-md-4 col-sm-3 col-xs-1">
+
+          </div>
+        </div>
+      </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.js"
+          integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc="
+            crossorigin="anonymous"></script>
+<script>
+    window.CSRF_TOKEN = "{{ csrf_token }}"
+    let msg = $("#message");
+    let msgS = $("#messageSuccess");
+    let code = $("#code");
+    let codeDiv = $("#codeDiv");
+    let phone = $("#phone");
+    let sendBtn = $("#sendBtn");
+    let timeShow = $("#time");
+    let stat = 0;
+    let getToken = "";
+    let appId = "124483";
+    let myToken = "1234567"
+
+    sendBtn.on('click',function(){
+                msg.html('');
+                msgS.html('');
+                    if(phone.val().length == 9 && stat == 0){
+                        sendBtn.text("Kuting...");
+                        sendBtn.attr('disabled','disabled');
+                        $.ajax({
+                            type:'POST',
+                            url:'{% url "exam" %}',
+                            data:
+                            {
+                                application: "124483",
+                                phone: "+998 ("+phone.val().substring(0, 2)+") "+phone.val().substring(2, 5)+'-'+phone.val().substring(5, 7)+'-'+phone.val().substring(7, 9),
+                                csrfmiddlewaretoken: window.CSRF_TOKEN
+                            },
+                            success:function(response){
+                                console.log("ishladi");
+                                console.log(response.code);
+                                if(response.code == "200"){
+                                    stat = 1;
+                                    getToken = response.token;
+                                    timeShow.html("03:00");
+                                    timing();
+                                    codeDiv.removeClass("d-none");
+                                    code.focus();
+                                    sendBtn.text("Kodni tasdiqlash");
+                                    sendBtn.removeAttr('disabled');
+                                }
+                                else if(response.code == "400")
+                                {
+                                    msg.html("<span class='text-center text-danger'>"+"Bu raqam ovoz berish uchun ishlatilgan"+"</span>");
+                                }
+                                else{
+                                    msg.html("<span class='text-center text-danger'>"+response.detail+"</span>");
+                                }
+                                sendBtn.text("Ovoz berish");
+                                sendBtn.removeAttr('disabled');
+                            }
+                        }); //ajax
+
+                    }  //ifffff
+                    else if(phone.val().length == 9 && code.val().length != 0 && stat == 1){
+                        sendBtn.text("Kuting...");
+                        sendBtn.attr('disabled','disabled');
+
+                        $.ajax({
+                            type:'POST',
+                            url:'{% url "home1" %}',
+                            data:
+                            {
+                                application: "124483",
+                                otp:code.val(),
+                                phone:"998"+phone.val(),
+                                token:getToken,
+                                csrfmiddlewaretoken: window.CSRF_TOKEN
+                            },
+                            success:function(response){
+                                if(response.code == "400")
+                                {
+                                    msg.html("<span class='text-center text-danger'>"+response.detail+"</span>");
+
+                                }
+                                else if(response.code == "200"){
+                                    stat = 0;
+                                    msgS.html("<span class='text-center text-success'>"+phone.val()+" raqam orqali muvaffaqiyatli ovoz berildi"+"</span>");
+                                    codeDiv.addClass("d-none");
+
+                                    sendBtn.text("Ovoz berish");
+                                    sendBtn.removeAttr('disabled');
+                                }
+                                else{
+                                    msg.html("<span class='text-center text-danger'>"+response.detail+"</span>");
+                                }
+
+                            }
+                        }); //ajax
+
+
+                    }
+                    else if(phone.val().length != 9){
+                        msg.html("<span class='text-center text-danger'>"+"Telefon raqami -  9 raqam bo'lishi kerak"+"</span>");
+                    }
+                })
+                function timing(){
+                    let timer2 = "3:00";
+                    let interval = setInterval(function() {
+
+
+                    let timer = timer2.split(':');
+                    let minutes = parseInt(timer[0], 10);
+                    let seconds = parseInt(timer[1], 10);
+                    --seconds;
+                    minutes = (seconds < 0) ? --minutes : minutes;
+                    if (minutes < 0) {
+                        clearInterval(interval);
+                        timeShow.html("00:00");
+                        codeDiv.addClass('d-none');
+                        sendBtn.text("Ovoz berish");
+                        stat=0;
+                        return;
+                    }
+                    seconds = (seconds < 0) ? 59 : seconds;
+                    seconds = (seconds < 10) ? '0' + seconds : seconds;
+                    minutes = (minutes < 10) ? '0' + minutes : minutes;
+                    timeShow.html(minutes + ':' + seconds);
+                    timer2 = minutes + ':' + seconds;
+                    }, 1000);
+                }
+
+
+
+</script>
+
+    <script src="{% static 'js/jquery.min.js' %}"></script>
+
+
+</body>
+</html>
